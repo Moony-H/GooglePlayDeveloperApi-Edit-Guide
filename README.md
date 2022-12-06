@@ -75,7 +75,7 @@ import java.io.FileInputStream
 
 fun main(args: Array<String>) {
     val credentials =
-        ServiceAccountCredentials.fromStream(FileInputStream("/Users/hanmunhwi/Desktop/Google Play Console Key/pc-api-5791105689854140514-65-6f334fc49580.json"))
+        ServiceAccountCredentials.fromStream(FileInputStream("{Service Account Key 경로}"))
 
 
 }
@@ -90,7 +90,7 @@ import java.io.FileInputStream
 
 fun main(args: Array<String>) {
     val credentials =
-        ServiceAccountCredentials.fromStream(FileInputStream("/Users/hanmunhwi/Desktop/Google Play Console Key/pc-api-5791105689854140514-65-6f334fc49580.json"))
+        ServiceAccountCredentials.fromStream(FileInputStream("{Service Account Key 경로}"))
             .createScoped(setOf("https://www.googleapis.com/auth/androidpublisher")) //edit을 사용하기 위한 권한 scope.
     credentials.refreshIfExpired()
 
@@ -99,8 +99,480 @@ fun main(args: Array<String>) {
 
 이제 access token을 활용하여 edit에 접근할 수 있습니다.
 
-## Edit 생성
+## Edit insert
 
-이제 insert를 사용하여 edit을 생성하겠습니다.
+edit을 생성하는 API 입니다.
+
+[Google Play Developer API 문서](https://developers.google.com/android-publisher/api-ref/rest/v3/edits/insert)를 참고하여 메소드와 data class를 아래와 같이 만듭니다.
+
+**EditResponse.kt**
+```kotlin
+import com.google.gson.annotations.SerializedName
+
+data class EditResponse (
+    @SerializedName("id")
+    val id:String,
+    @SerializedName("expiryTimeSeconds")
+    val expiryTimeSeconds:String
+)
+```
+
+<br/>
+
+<br/>
+
+**EditsAPI.kt**
+```kotlin
+import retrofit2.Response
+import retrofit2.http.Header
+import retrofit2.http.POST
+import retrofit2.http.Path
+
+interface EditsAPI {
+
+    @POST("{packageName}/edits")
+    suspend fun postInsertEdit(
+        @Header("Authorization")
+        token: String,
+        @Path("packageName")
+        packageName: String,
+    ): Response<EditResponse>
+
+}
+```
+
+
+그 다음 Main.kt의 코드를 아래와 같이 수정합니다.
+
+```kotlin
+import com.google.auth.oauth2.ServiceAccountCredentials
+import com.jakewharton.retrofit2.adapter.kotlin.coroutines.CoroutineCallAdapterFactory
+import kotlinx.coroutines.*
+import okhttp3.OkHttpClient
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import java.io.FileInputStream
+import java.util.*
+import kotlin.system.exitProcess
+
+fun main(args: Array<String>) {
+
+    runBlocking {
+        val token = getAccessToken()
+        val editsRetrofit = Retrofit.Builder()
+            .baseUrl("https://androidpublisher.googleapis.com/androidpublisher/v3/applications/")
+            .addConverterFactory(GsonConverterFactory.create())
+            .addCallAdapterFactory(CoroutineCallAdapterFactory())
+            .client(OkHttpClient.Builder().build())
+            .build()
+            .create(EditsAPI::class.java)
+
+        val editInsertResponse = editsRetrofit.postEditInsert("Bearer $token", "{패키지명}")
+
+
+
+        println("edit insert response code: ${editInsertResponse.code()}")
+        println("edit insert response body: ${editInsertResponse.body()}")
+
+        exitProcess(0)
+    }
+
+
+}
+
+fun getAccessToken(): String {
+    val credentials =
+        ServiceAccountCredentials.fromStream(FileInputStream("{Service Account Key 경로}"))
+            .createScoped(setOf("https://www.googleapis.com/auth/androidpublisher"))
+    credentials.refreshIfExpired()
+    return credentials.accessToken.tokenValue
+}
+
+```
+
+
+이렇게 edits를 생성할 수 있습니다.
+
+
+
+## Edit Validate
+
+insert로 생성한 edits가 만료되었는지 확인할 수 있는 API 입니다.
+
+만료가 되었다면 response code가 400이 되고, 만료가 되지 않았다면 200이 됨과 동시에 Insert와 똑같은 형식의 Json 파일을 반환합니다.
+
+[Google Play Developer API 문서](https://developers.google.com/android-publisher/api-ref/rest/v3/edits/validate)를 참고하여 아래와 같은 코드를 EditsAPI.kt에 추가합니다.
+
+
+**EditsAPI.kt**
+```kotlin
+
+import retrofit2.Response
+import retrofit2.http.Header
+import retrofit2.http.POST
+import retrofit2.http.Path
+
+interface EditsAPI {
+
+    @POST("{packageName}/edits")
+    suspend fun postInsertEdit(
+        @Header("Authorization")
+        token: String,
+        @Path("packageName")
+        packageName: String,
+    ): Response<EditResponse>
+
+    //아래의 메소드를 추가
+    @POST("{packageName}/edits/{editId}:validate")
+    suspend fun postValidateEdit(
+        @Header("Authorization")
+        token: String,
+        @Path("packageName")
+        packageName: String,
+        @Path("editId")
+        editId:String
+    ): Response<EditResponse>
+
+}
+```
+
+그 다음 Validate를 사용하기 위해 아래와 같은 코드를 Main.kt에 추가합니다.
+
+
+**Main.kt**
+
+```kotlin
+import com.google.auth.oauth2.ServiceAccountCredentials
+import com.jakewharton.retrofit2.adapter.kotlin.coroutines.CoroutineCallAdapterFactory
+import kotlinx.coroutines.*
+import okhttp3.OkHttpClient
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import java.io.FileInputStream
+import java.util.*
+import kotlin.system.exitProcess
+
+fun main(args: Array<String>) {
+
+    runBlocking {
+        val token = getAccessToken()
+        val editsRetrofit = Retrofit.Builder()
+            .baseUrl("https://androidpublisher.googleapis.com/androidpublisher/v3/applications/")
+            .addConverterFactory(GsonConverterFactory.create())
+            .addCallAdapterFactory(CoroutineCallAdapterFactory())
+            .client(OkHttpClient.Builder().build())
+            .build()
+            .create(EditsAPI::class.java)
+
+        val editInsertResponse = editsRetrofit.postEditInsert("Bearer $token", "{패키지명}")
+
+        println("edit insert response code: ${editInsertResponse.code()}")
+        println("edit insert response body: ${editInsertResponse.body()}")
+
+        val editInsertBody= editInsertResponse.body() ?: exitProcess(0)
+
+
+
+
+        val editValidateResponse=editsRetrofit.postEditValidate("Bearer $token","{패키지명}",editInsertBody.id)
+
+        println("edit validate response code: ${editValidateResponse.code()}")
+        println("edit validate response body: ${editValidateResponse.body()}")
+
+        exitProcess(0)
+    }
+
+
+}
+
+fun getAccessToken(): String {
+    val credentials =
+        ServiceAccountCredentials.fromStream(FileInputStream("{Service Account Key 경로}"))
+            .createScoped(setOf("https://www.googleapis.com/auth/androidpublisher"))
+    credentials.refreshIfExpired()
+    return credentials.accessToken.tokenValue
+}
+
+```
+edit validate response code: 200이 출력되면 edit id의 edit이 유효하며 사용할 수 있는 상태 입니다.
+
+
+## Edit delete
+
+생성한 edit을 지우는 api 입니다.
+
+edit id를 통하여 생성된 edit id를 지웁니다.
+
+
+[Google Play Developer API 문서](https://developers.google.com/android-publisher/api-ref/rest/v3/edits/delete)를 참고하여 아래와 같은 코드를 EditsAPI.kt에 작성합니다.
+
+**EditsAPI.kt**
+
+```kotlin
+import retrofit2.Response
+import retrofit2.http.DELETE
+import retrofit2.http.Header
+import retrofit2.http.POST
+import retrofit2.http.Path
+
+interface EditsAPI {
+
+    @POST("{packageName}/edits")
+    suspend fun postInsertEdit(
+        @Header("Authorization")
+        token: String,
+        @Path("packageName")
+        packageName: String,
+    ): Response<EditResponse>
+
+    @POST("{packageName}/edits/{editId}:validate")
+    suspend fun postValidateEdit(
+        @Header("Authorization")
+        token: String,
+        @Path("packageName")
+        packageName: String,
+        @Path("editId")
+        editId:String
+    ): Response<EditResponse>
+
+    //아래의 코드를 추가
+    @DELETE("{packageName}/edits/{editId}")
+    suspend fun deleteDeleteEdit(
+        @Header("Authorization")
+        token: String,
+        @Path("packageName")
+        packageName: String,
+        @Path("editId")
+        editId: String
+    ): Response<Unit>
+
+}
+
+```
+
+그 다음 Main.kt를 아래와 같이 수정합니다.
+
+**Main.kt**
+
+```kotlin
+import com.google.auth.oauth2.ServiceAccountCredentials
+import com.jakewharton.retrofit2.adapter.kotlin.coroutines.CoroutineCallAdapterFactory
+import kotlinx.coroutines.*
+import okhttp3.OkHttpClient
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import java.io.FileInputStream
+import java.util.*
+import kotlin.system.exitProcess
+
+fun main(args: Array<String>) {
+
+    runBlocking {
+        val token = getAccessToken()
+        val editsRetrofit = Retrofit.Builder()
+            .baseUrl("https://androidpublisher.googleapis.com/androidpublisher/v3/applications/")
+            .addConverterFactory(GsonConverterFactory.create())
+            .addCallAdapterFactory(CoroutineCallAdapterFactory())
+            .client(OkHttpClient.Builder().build())
+            .build()
+            .create(EditsAPI::class.java)
+
+        val editInsertResponse = editsRetrofit.postEditInsert("Bearer $token", "com.dpectrum.holymolysheet")
+
+        println("edit insert response code: ${editInsertResponse.code()}")
+        println("edit insert response body: ${editInsertResponse.body()}")
+
+        val editInsertBody= editInsertResponse.body() ?: exitProcess(0)
+
+
+
+
+        val editValidateResponse=editsRetrofit.postEditValidate("Bearer $token","com.dpectrum.holymolysheet",editInsertBody.id)
+
+        println("edit validate response code: ${editValidateResponse.code()}")
+        println("edit validate response body: ${editValidateResponse.body()}")
+
+        val editDeleteResponse=editsRetrofit.deleteEditDelete("Bearer $token", "com.dpectrum.holymolysheet",editInsertBody.id)
+
+        println("edit delete response code: ${editDeleteResponse.code()}")
+        println("edit delete response body: ${editDeleteResponse.body()}")
+
+        val editValidateResponse2=editsRetrofit.postEditValidate("Bearer $token","com.dpectrum.holymolysheet",editInsertBody.id)
+
+        println("edit validate 2 response code: ${editValidateResponse2.code()}")
+        println("edit validate 2 response body: ${editValidateResponse2.body()}")
+
+        exitProcess(0)
+    }
+
+
+}
+
+fun getAccessToken(): String {
+    val credentials =
+        ServiceAccountCredentials.fromStream(FileInputStream("/Users/hanmunhwi/Desktop/Google Play Console Key/pc-api-5791105689854140514-65-de5fdf8795d0.json"))
+            .createScoped(setOf("https://www.googleapis.com/auth/androidpublisher"))
+    credentials.refreshIfExpired()
+    return credentials.accessToken.tokenValue
+}
+
+```
+edit delete response code: 204, edit validate 2 response code: 400가 출력되면 성공입니다.
+
+## Edit commit
+
+commit은 edit의 변경사항을 제출하는 API입니다.
+
+이 API가 호출되면 변경사항이 Google Play에 제출되어 [Google Play Console](https://play.google.com/console/about/)의 앱이 검토중으로 상태가 바뀌게 됩니다.
+
+따라서 이후에 작성할 Edit을 수정하는 API를 먼저 확인 후, 변경하길 원하는 요소를 변경한 후 호출하시기 바랍니다.
+
+이번에는 사용 방법만 설명하겠습니다.
+
+먼저 [Google Play Developer API 문서](https://developers.google.com/android-publisher/api-ref/rest/v3/edits/commit)를 참고하여 아래와 같은 코드를 EditsAPI.kt에 추가합니다.
+
+
+```kotlin
+import retrofit2.Response
+import retrofit2.http.DELETE
+import retrofit2.http.Header
+import retrofit2.http.POST
+import retrofit2.http.Path
+
+interface EditsAPI {
+
+    @POST("{packageName}/edits")
+    suspend fun postInsertEdit(
+        @Header("Authorization")
+        token: String,
+        @Path("packageName")
+        packageName: String,
+    ): Response<EditResponse>
+
+    @POST("{packageName}/edits/{editId}:validate")
+    suspend fun postValidateEdit(
+        @Header("Authorization")
+        token: String,
+        @Path("packageName")
+        packageName: String,
+        @Path("editId")
+        editId:String
+    ): Response<EditResponse>
+
+    @DELETE("{packageName}/edits/{editId}")
+    suspend fun deleteDeleteEdit(
+        @Header("Authorization")
+        token: String,
+        @Path("packageName")
+        packageName: String,
+        @Path("editId")
+        editId: String
+    ):Response<Unit>
+
+    //아래의 코드를 추가
+
+    @POST("{packageName}/edits/{editId}:commit")
+    suspend fun postCommitEdit(
+        @Header("Authorization")
+        token: String,
+        @Path("packageName")
+        packageName: String,
+        @Path("editId")
+        editId: String,
+    ):Response<EditResponse>
+
+}
+```
+
+그 다음 아래의 코드룰 Main.kt의 **중간**에 추가합니다.
+
+**Main.kt**
+
+```kotlin
+import com.google.auth.oauth2.ServiceAccountCredentials
+import com.jakewharton.retrofit2.adapter.kotlin.coroutines.CoroutineCallAdapterFactory
+import kotlinx.coroutines.*
+import okhttp3.OkHttpClient
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import java.io.FileInputStream
+import kotlin.system.exitProcess
+
+fun main(args: Array<String>) {
+
+    runBlocking {
+        val token = getAccessToken()
+        val editsRetrofit = Retrofit.Builder()
+            .baseUrl("https://androidpublisher.googleapis.com/androidpublisher/v3/applications/")
+            .addConverterFactory(GsonConverterFactory.create())
+            .addCallAdapterFactory(CoroutineCallAdapterFactory())
+            .client(OkHttpClient.Builder().build())
+            .build()
+            .create(EditsAPI::class.java)
+
+        val editInsertResponse = editsRetrofit.postInsertEdit("Bearer $token", "com.dpectrum.holymolysheet")
+
+        println("edit insert response code: ${editInsertResponse.code()}")
+        println("edit insert response body: ${editInsertResponse.body()}")
+
+        val editInsertBody= editInsertResponse.body() ?: exitProcess(0)
+
+
+
+
+        val editValidateResponse=editsRetrofit.postValidateEdit("Bearer $token","com.dpectrum.holymolysheet",editInsertBody.id)
+
+        println("edit validate response code: ${editValidateResponse.code()}")
+        println("edit validate response body: ${editValidateResponse.body()}")
+        
+        
+        //이곳에 추가
+        
+        val editCommitResponse=editsRetrofit.postCommitEdit("Bearer $token","com.dpectrum.holymolysheet",editInsertBody.id)
+        
+        println("edit commit response code: ${editCommitResponse.code()}")
+        println("edit commit response body: ${editCommitResponse.body()}")
+        
+        
+        
+        
+
+        val editDeleteResponse=editsRetrofit.deleteDeleteEdit("Bearer $token", "com.dpectrum.holymolysheet",editInsertBody.id)
+
+        println("edit delete response code: ${editDeleteResponse.code()}")
+        println("edit delete response body: ${editDeleteResponse.body()}")
+
+        val editValidateResponse2=editsRetrofit.postValidateEdit("Bearer $token","com.dpectrum.holymolysheet",editInsertBody.id)
+
+        println("edit validate 2 response code: ${editValidateResponse2.code()}")
+        println("edit validate 2 response body: ${editValidateResponse2.body()}")
+
+        exitProcess(0)
+    }
+
+
+}
+
+fun getAccessToken(): String {
+    val credentials =
+        ServiceAccountCredentials.fromStream(FileInputStream("/Users/hanmunhwi/Desktop/Google Play Console Key/pc-api-5791105689854140514-65-de5fdf8795d0.json"))
+            .createScoped(setOf("https://www.googleapis.com/auth/androidpublisher"))
+    credentials.refreshIfExpired()
+    return credentials.accessToken.tokenValue
+}
+
+```
+
+
+이것으로 Edit을 생성, 유효성 검사, 삭제 제출하는 방법을 배웠습니다.
+
+다음은 editId를 이용하여 앱의 정보를 수정하는 방법을 알아보겠습니다.
+
+
+
+
+
+
+
 
 

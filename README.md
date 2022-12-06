@@ -377,7 +377,7 @@ fun main(args: Array<String>) {
             .build()
             .create(EditsAPI::class.java)
 
-        val editInsertResponse = editsRetrofit.postEditInsert("Bearer $token", "com.dpectrum.holymolysheet")
+        val editInsertResponse = editsRetrofit.postEditInsert("Bearer $token", "{패키지명}")
 
         println("edit insert response code: ${editInsertResponse.code()}")
         println("edit insert response body: ${editInsertResponse.body()}")
@@ -387,17 +387,17 @@ fun main(args: Array<String>) {
 
 
 
-        val editValidateResponse=editsRetrofit.postEditValidate("Bearer $token","com.dpectrum.holymolysheet",editInsertBody.id)
+        val editValidateResponse=editsRetrofit.postEditValidate("Bearer $token","{패키지명}",editInsertBody.id)
 
         println("edit validate response code: ${editValidateResponse.code()}")
         println("edit validate response body: ${editValidateResponse.body()}")
 
-        val editDeleteResponse=editsRetrofit.deleteEditDelete("Bearer $token", "com.dpectrum.holymolysheet",editInsertBody.id)
+        val editDeleteResponse=editsRetrofit.deleteEditDelete("Bearer $token", "{패키지명}",editInsertBody.id)
 
         println("edit delete response code: ${editDeleteResponse.code()}")
         println("edit delete response body: ${editDeleteResponse.body()}")
 
-        val editValidateResponse2=editsRetrofit.postEditValidate("Bearer $token","com.dpectrum.holymolysheet",editInsertBody.id)
+        val editValidateResponse2=editsRetrofit.postEditValidate("Bearer $token","{패키지명}",editInsertBody.id)
 
         println("edit validate 2 response code: ${editValidateResponse2.code()}")
         println("edit validate 2 response body: ${editValidateResponse2.body()}")
@@ -410,7 +410,7 @@ fun main(args: Array<String>) {
 
 fun getAccessToken(): String {
     val credentials =
-        ServiceAccountCredentials.fromStream(FileInputStream("/Users/hanmunhwi/Desktop/Google Play Console Key/pc-api-5791105689854140514-65-de5fdf8795d0.json"))
+        ServiceAccountCredentials.fromStream(FileInputStream("{Service Account Key 경로}"))
             .createScoped(setOf("https://www.googleapis.com/auth/androidpublisher"))
     credentials.refreshIfExpired()
     return credentials.accessToken.tokenValue
@@ -510,7 +510,7 @@ fun main(args: Array<String>) {
             .build()
             .create(EditsAPI::class.java)
 
-        val editInsertResponse = editsRetrofit.postInsertEdit("Bearer $token", "com.dpectrum.holymolysheet")
+        val editInsertResponse = editsRetrofit.postInsertEdit("Bearer $token", "{패키지명}")
 
         println("edit insert response code: ${editInsertResponse.code()}")
         println("edit insert response body: ${editInsertResponse.body()}")
@@ -520,7 +520,7 @@ fun main(args: Array<String>) {
 
 
 
-        val editValidateResponse=editsRetrofit.postValidateEdit("Bearer $token","com.dpectrum.holymolysheet",editInsertBody.id)
+        val editValidateResponse=editsRetrofit.postValidateEdit("Bearer $token","{패키지명}",editInsertBody.id)
 
         println("edit validate response code: ${editValidateResponse.code()}")
         println("edit validate response body: ${editValidateResponse.body()}")
@@ -528,7 +528,7 @@ fun main(args: Array<String>) {
         
         //이곳에 추가
         
-        val editCommitResponse=editsRetrofit.postCommitEdit("Bearer $token","com.dpectrum.holymolysheet",editInsertBody.id)
+        val editCommitResponse=editsRetrofit.postCommitEdit("Bearer $token","{패키지명}",editInsertBody.id)
         
         println("edit commit response code: ${editCommitResponse.code()}")
         println("edit commit response body: ${editCommitResponse.body()}")
@@ -537,12 +537,12 @@ fun main(args: Array<String>) {
         
         
 
-        val editDeleteResponse=editsRetrofit.deleteDeleteEdit("Bearer $token", "com.dpectrum.holymolysheet",editInsertBody.id)
+        val editDeleteResponse=editsRetrofit.deleteDeleteEdit("Bearer $token", "{패키지명}",editInsertBody.id)
 
         println("edit delete response code: ${editDeleteResponse.code()}")
         println("edit delete response body: ${editDeleteResponse.body()}")
 
-        val editValidateResponse2=editsRetrofit.postValidateEdit("Bearer $token","com.dpectrum.holymolysheet",editInsertBody.id)
+        val editValidateResponse2=editsRetrofit.postValidateEdit("Bearer $token","{패키지명}",editInsertBody.id)
 
         println("edit validate 2 response code: ${editValidateResponse2.code()}")
         println("edit validate 2 response body: ${editValidateResponse2.body()}")
@@ -555,7 +555,7 @@ fun main(args: Array<String>) {
 
 fun getAccessToken(): String {
     val credentials =
-        ServiceAccountCredentials.fromStream(FileInputStream("/Users/hanmunhwi/Desktop/Google Play Console Key/pc-api-5791105689854140514-65-de5fdf8795d0.json"))
+        ServiceAccountCredentials.fromStream(FileInputStream("{Service Account Key 경로}"))
             .createScoped(setOf("https://www.googleapis.com/auth/androidpublisher"))
     credentials.refreshIfExpired()
     return credentials.accessToken.tokenValue
